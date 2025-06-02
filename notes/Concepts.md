@@ -6,21 +6,9 @@
 
 -----------
 
-### [Project Status : Experimental and Under Development, Subject to Major Changes]
-
-The module is in active development, and as such, it is subject to significant changes as we refine our approach and methodologies to best support our goals.
-
-visit: https://neurons.me to learn more.
-
-----------
-
 # Setting up your Context. 
 
-
-
 > Defining the environment and context in which your code runs, especially when you're interacting with intelligent agents or services like me.
-
-
 
 Having a **clear declaration of the environment** and the context can have a series of implications for security, interoperability, and clarity. 
 The codebase is often vast, dynamic, and continually evolving. 
@@ -34,9 +22,7 @@ The core function of **this.env** to **define, lock, and hash the environment** 
 It's about structuring and securing the environmental context in which your systems operate, which is crucial for **maintaining consistency, security, and reliability, especially when dealing with intelligent systems and machine learning processes just like .me.**
 
 
-
 > **this.env** acts as a tool to **formalize and verify the environment,** ensuring that **all components interact within a known and expected context.** 
-
 
 
 This functionality is especially important in environments where **machine learning models or intelligent agents** are **sensitive to the context in which they operate.** 
@@ -44,12 +30,9 @@ This functionality is especially important in environments where **machine learn
 By **hashing** the **environment**, **this.env** provides a mechanism to **detect and respond to changes,** ensuring that the operational **context is as intended** and has **not been altered** unexpectedly.
 
 
-
 # This.Env Provides Tools to Manage Enviroments across the all.this family:
-
  Integrating `this.env` with each data formatter to utilize their tailored `envDetect` functionality offers a flexible and powerful system. This way, `this.env` serves as a higher-level interface that **can access environment-specific configurations and utilities provided by each data formatter.** 
 
-## Under Developement:
 
 ### [Conceptual]Here's how you can structure this:
 

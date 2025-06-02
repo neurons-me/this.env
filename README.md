@@ -13,7 +13,7 @@
 
 # Getting Started:
 ##### **Install `this.env`:**
-Open your terminal and run the following command to install the `this.me` package:
+Open your terminal and run the following command to install the `this.env` package:
 
 ```bash
 npm install this.env
