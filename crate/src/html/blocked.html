@@ -1,0 +1,121 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Access Blocked</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1e1e1e;
+      font-family: 'Roboto', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      backdrop-filter: blur(10px);
+    }
+
+    .modal {
+      background: #2d2d2d;
+      border-radius: 21px;
+      backdrop-filter: blur(21px);
+      -webkit-backdrop-filter: blur(21px);
+      padding: 34px;
+      text-align: center;
+      color: #e4e4e4;
+      width: 300px;
+    }
+
+    .icon {
+      font-size: 50px;
+      color: #f87171; /* soft red for blocked */
+    }
+
+    h2 {
+      margin: 8px 0 8px;
+    }
+
+    p {
+      font-size: 16px;
+      color: #c4c4c4;
+    }
+
+    .buttons {
+      display: flex;
+      flex-direction: row;
+      gap: 16px;
+      margin-top: 8px;
+      justify-content: center;
+      width: 89%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .buttons button {
+      padding: 11px;
+      border-radius: 8px;
+      background-color: transparent;
+      border: 2px solid transparent;
+      color: #c1c1c1;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease, border-color 0.3s, color 0.3s;
+    }
+
+    .buttons button:hover {
+      background-color: #3a3a3a;
+    }
+
+    .buttons button:first-child {
+      border-color: #7a7a7a;
+      color: #b0b0b0;
+    }
+
+    .remember {
+      margin-bottom: 20px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #b0b0b0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .remember input {
+      border: none;
+      outline: none;
+      box-shadow: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="modal">
+    <div class="icon">⛔</div>
+    <h2>Access Blocked</h2>
+    <p>This domain has been blocked from accessing your environment.</p>
+    <div class="remember">
+      <input type="checkbox" id="remember" checked />
+      <label for="remember">Remember this decision</label>
+    </div>
+    <div class="buttons">
+      <button onclick="handleUnblock()">Unblock</button>
+      <button onclick="handleExit()">Exit</button>
+    </div>
+  </div>
+
+  <script>
+    function handleExit() {
+      window.close(); // attempt to close window or navigate away
+    }
+    function handleUnblock() {
+      fetch('/__env/unblock', { method: 'POST' });
+    }
+  </script>
+</body>
+</html>
