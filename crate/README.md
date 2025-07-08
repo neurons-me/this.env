@@ -27,16 +27,14 @@ A smart middleware system that inspects incoming HTTP requests and evaluates the
 2. Busca identidad → log
 3. Si no hay identidad → PendingApproval
 4. Si hay identidad:
-
   a. Instancia Env → log
-
   b. ¿Endorsed?
-
    \- Sí → Approved
-
    \- No → PendingApproval
-
 5. ¿Blocked por alguna regla? → Blocked
+
+EnvResquestInfo - information about the request, such as method, path, host, timestamp, etc.
+EnvRequestLog - a log entry for a request, including method, path, host, timestamp, and status as minimal data. 
 
 ## 🚀 Quick start (Actix Web)
 

@@ -11,13 +11,14 @@ use crate::middleware::actix::ActixMwConfig;
 use serde_json::json;
 use crate::middleware::actix::env_request_parser::parse_env_request;
 use crate::middleware::env_request::EnvRequest;
-use rusqlite::Connection;
 use actix_web::{HttpResponse, http::StatusCode};
+use actix_web::HttpMessage;
 /// The middleware service implementation that intercepts the request,
 /// builds an `EnvRequest`, and invokes the handler pipeline.
 pub struct ActixMiddlewareService<S> {
     pub(crate) service: Rc<S>,
     pub(crate) config: ActixMwConfig,
+    pub(crate) conn: std::sync::Arc<rusqlite::Connection>,
 }
 
 impl<S, B> Service<ServiceRequest> for ActixMiddlewareService<S>
@@ -34,6 +35,7 @@ where
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
+        use crate::middleware::actix::mw_router::intercept_internal_routes;
         use crate::env::{Env, EnvStatus};
         let port = req.connection_info().host().split(':').nth(1).unwrap_or("unknown").to_string();
         if self.config.manual_mode {
@@ -42,16 +44,14 @@ where
             log::info!("this.env [{}] ActixMiddleware: {} {}", port, req.method(), req.path());
         }
 
-        let conn = match Connection::open(".db") {
-            Ok(c) => c,
-            Err(e) => {
-                log::error!("this.env middleware: failed to open database: {:?}", e);
-                return Box::pin(async {
-                    let resp = HttpResponse::InternalServerError().finish();
-                    Ok(req.into_response(resp.map_into_right_body()))
-                });
-            }
-        };
+        let conn = self.conn.clone();
+        req.extensions_mut().insert(conn.clone());
+
+        if let Some(resp) = intercept_internal_routes(&req) {
+            return Box::pin(async {
+                Ok(req.into_response(resp.map_into_right_body()))
+            });
+        }
 
         let svc = Rc::clone(&self.service);
         let config = self.config.clone();

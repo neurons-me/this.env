@@ -141,6 +141,7 @@ pub struct EnvRequestLog {
     pub headers: String,
     pub decision: String,
     pub reason: String,
+    pub domain: String,
 }
 
 
@@ -153,20 +154,22 @@ impl From<EnvRequest> for EnvRequestLog {
                 method: http.method,
                 path: http.path,
                 ip: http.ip,
-                host: http.host,
+                host: http.host.clone(),
                 headers: serde_json::to_string(&http.headers).unwrap_or_default(),
                 decision: String::new(),
                 reason: String::new(),
+                domain: http.headers.get("domain").cloned().unwrap_or_else(|| http.host.clone()),
             },
             EnvRequest::Ws(ws) => Self {
                 timestamp: Utc::now().to_rfc3339(),
                 method: "WS".into(),
                 path: "".into(),
                 ip: ws.ip,
-                host: ws.host,
+                host: ws.host.clone(),
                 headers: serde_json::to_string(&ws.headers).unwrap_or_default(),
                 decision: String::new(),
                 reason: String::new(),
+                domain: ws.headers.get("domain").cloned().unwrap_or_else(|| ws.host.clone()),
             },
             EnvRequest::Cli(_) => Self {
                 timestamp: Utc::now().to_rfc3339(),
@@ -177,6 +180,7 @@ impl From<EnvRequest> for EnvRequestLog {
                 headers: "{}".into(),
                 decision: String::new(),
                 reason: String::new(),
+                domain: "localhost".into(),
             },
         }
     }

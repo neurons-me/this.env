@@ -30,7 +30,7 @@ impl Env {
     }
 
     pub fn resolve(req: &EnvRequest, conn: &Connection) -> EnvStatus {
-        log::debug!("this.env resolve: attempting to fetch env from request");
+        //log::debug!("this.env resolve: attempting to fetch env from request");
         // Extract domain and env_type from EnvRequest variants
         let (domain, _env_type) = match req {
             EnvRequest::Http(http_req) => {
@@ -97,7 +97,7 @@ impl Env {
 
     fn save_log_to_sqlite(conn: &Connection, log: &EnvRequestLog) -> SqlResult<()> {
         conn.execute(
-            "INSERT INTO env_request_logs (ip, method, path, host, headers, decision, reason, timestamp) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO env_request_logs (ip, method, path, host, headers, decision, reason, timestamp, domain) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 log.ip.as_deref().unwrap_or("unknown"),
                 log.method,
@@ -107,6 +107,7 @@ impl Env {
                 log.decision,
                 log.reason,
                 log.timestamp,
+                log.domain,
             ],
         )?;
         Ok(())

@@ -3,6 +3,7 @@
 //! This module defines the `ActixMiddleware` struct which implements
 //! the `Transform` trait to intercept and process requests in Actix.
 use std::rc::Rc;
+use std::sync::Arc;
 use actix_service::{Service, Transform};
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::Error;
@@ -67,21 +68,16 @@ where
         INIT.call_once(|| {
             log::info!("this.env middleware: using DB at {:?}", abs_path);
         });
-        match Connection::open(&db_path) {
-            Ok(conn) => {
-                match migrate_schema(&conn) {
-                    Ok(_) => log::info!("this.env middleware: connected and migrated schema at {}", db_path),
-                    Err(e) => log::error!("this.env middleware: schema migration failed: {:?}", e),
-                }
-            }
-            Err(e) => {
-                log::error!("this.env middleware: failed to open {} for migration: {:?}", db_path, e);
-            }
+        let conn = Arc::new(Connection::open(&db_path).unwrap());
+        match migrate_schema(&conn) {
+            Ok(_) => log::info!("this.env middleware: connected and migrated schema at {}", db_path),
+            Err(e) => log::error!("this.env middleware: schema migration failed: {:?}", e),
         }
 
         ok(ActixMiddlewareService {
             service: Rc::new(service),
             config: self.config.clone(),
+            conn: conn.clone(),
         })
     }
 }

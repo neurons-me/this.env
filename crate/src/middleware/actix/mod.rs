@@ -10,5 +10,7 @@ pub mod config;
 pub mod handlers;
 pub mod utils;
 pub mod env_request_parser;
+pub mod mw_router;
 pub use config::*;
 pub use middleware::*;
+

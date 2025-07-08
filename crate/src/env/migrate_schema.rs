@@ -54,6 +54,7 @@ pub fn migrate_schema(conn: &Connection) -> SqlResult<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS env_request_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            domain TEXT,
             timestamp TEXT NOT NULL,
             method TEXT,
             path TEXT,

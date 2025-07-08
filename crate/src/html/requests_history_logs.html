@@ -15,25 +15,31 @@
       align-items: center;
       justify-content: flex-start;
       min-height: 100vh;
-      padding-top: 40px;
+      padding-top: 2px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
     h1 {
-      color: #eab308;
-      margin-bottom: 20px;
+      color: #a3a1a1;
+      margin: 12px 1% 18px;
+      font-weight: 500;
+      font-size: 18px;
+      align-self: flex-start;
+      font-family: 'Roboto', sans-serif;
     }
 
     table {
-      width: 90%;
-      max-width: 1000px;
+      width: 99%;
       border-collapse: collapse;
       background-color: #2d2d2d;
-      border-radius: 12px;
+      border-radius: 1px;
       overflow: hidden;
     }
 
     th, td {
-      padding: 14px;
+      padding: 10px 14px;
+      font-size: 14px;
       border-bottom: 1px solid #444;
       text-align: left;
     }
@@ -51,15 +57,70 @@
     td {
       color: #d5d5d5;
     }
+
+    td.timestamp {
+      color: #999;
+    }
+
+    td.decision-approve {
+      color: rgb(0, 154, 137);
+      font-weight: bold;
+    }
+
+    td.decision-block {
+      color: rgb(200, 80, 80);
+      font-weight: bold;
+    }
+
+    td.decision-pending {
+      color: rgb(210, 180, 70);
+      font-weight: 500;
+    }
+
+    td.path-cell {
+      max-width: 140px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      position: relative;
+    }
   </style>
 </head>
 <body>
-  <h1>Logs de this.env</h1>
+  <nav style="width: 90%; padding: 6px 5%; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #444;">
+    <div style="display: flex; align-items: center;">
+      <img src="https://neurons.me/media/neurons-grey.png" alt="neurons logo" style="height: 34px; margin-right: 12px;">
+      <span style="font-size: 16px; font-weight: bold; color: white;">this.env</span>
+    </div>
+    <div style="display: flex; gap: 20px;">
+      <a href="/__env/" style="color: #cfcfcf; text-decoration: none; font-weight: 500; display: flex; align-items: center;">
+        <i data-feather="home" style="margin-right: 6px;"></i>
+        Home
+      </a>
+      <a href="/__env/docs" style="color: #cfcfcf; text-decoration: none; font-weight: 500; display: flex; align-items: center;">
+        <i data-feather="book" style="margin-right: 6px;"></i>
+        Docs
+      </a>
+      <a href="/__env/status" style="color: #cfcfcf; text-decoration: none; font-weight: 500; display: flex; align-items: center;">
+        <i data-feather="activity" style="margin-right: 6px;"></i>
+        Status
+      </a>
+    </div>
+  </nav>
+  <h1>Request Logs</h1>
+  <div style="width: 99%; display: flex; justify-content: flex-end; margin-bottom: 8px;">
+    <button id="delete-selected" style="background: none; border: none; cursor: pointer;" title="Delete Selected">
+      <i data-feather="trash-2" style="color: #ccc; width: 20px; height: 20px;"></i>
+    </button>
+  </div>
   <table id="log-table">
     <thead>
       <tr>
+        <th><input type="checkbox" id="select-all-checkbox" /></th>
         <th>Timestamp</th>
         <th>Domain</th>
+        <th>Path</th>
         <th>Decision</th>
         <th>Reason</th>
       </tr>
@@ -68,21 +129,114 @@
     </tbody>
   </table>
   <script>
-    fetch('/log-history')
+  let offset = 0;
+  const limit = 50;
+  let loading = false;
+
+  function loadLogs(append = false) {
+    if (loading) return;
+    loading = true;
+
+    fetch(`/__env/log-history?limit=${limit}&offset=${offset}`)
       .then(res => res.json())
       .then(data => {
         const tbody = document.querySelector('#log-table tbody');
-        data.forEach(log => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${log.timestamp}</td>
-            <td>${log.domain}</td>
-            <td>${log.decision}</td>
-            <td>${log.reason}</td>
-          `;
-          tbody.appendChild(row);
-        });
+        if (!append) tbody.innerHTML = '';
+
+        if (Array.isArray(data)) {
+          data.forEach(log => {
+            const row = document.createElement('tr');
+            const decisionClass = log.decision === "Approved"
+              ? "decision-approve"
+              : log.decision === "Blocked"
+              ? "decision-block"
+              : "decision-pending";
+
+            row.innerHTML = `
+              <td><input type="checkbox" class="log-checkbox" /></td>
+              <td class="timestamp">${log.timestamp}</td>
+              <td>${log.domain}</td>
+              <td class="path-cell" title="${log.path}">${log.path}</td>
+              <td class="${decisionClass}">${log.decision}</td>
+              <td>${log.reason}</td>
+            `;
+            tbody.appendChild(row);
+          });
+          offset += data.length;
+        }
+      })
+      .catch(err => {
+        console.error(err);
+      })
+      .finally(() => {
+        loading = false;
       });
+  }
+
+  function onScroll() {
+    const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = document.documentElement.clientHeight;
+
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      loadLogs(true);
+    }
+  }
+
+  loadLogs();
+  window.addEventListener('scroll', onScroll);
+
+  // Poll every 3 seconds for new logs at the top
+  setInterval(() => {
+    fetch(`/__env/log-history?limit=${limit}&offset=0`)
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.querySelector('#log-table tbody');
+        if (Array.isArray(data) && data.length > 0) {
+          // Insert new items on top if they aren't duplicates
+          const existingTimestamps = Array.from(tbody.children).map(row => row.children[1].textContent);
+          data.reverse().forEach(log => {
+            if (!existingTimestamps.includes(log.timestamp)) {
+              const row = document.createElement('tr');
+              const decisionClass = log.decision === "Approved"
+                ? "decision-approve"
+                : log.decision === "Blocked"
+                ? "decision-block"
+                : "decision-pending";
+
+              row.innerHTML = `
+                <td><input type="checkbox" class="log-checkbox" /></td>
+                <td class="timestamp">${log.timestamp}</td>
+                <td>${log.domain}</td>
+                <td class="path-cell" title="${log.path}">${log.path}</td>
+                <td class="${decisionClass}">${log.decision}</td>
+                <td>${log.reason}</td>
+              `;
+              tbody.insertBefore(row, tbody.firstChild);
+              offset++; // Increase offset so we don’t reload same data during scroll
+            }
+          });
+        }
+      })
+      .catch(err => console.error(err));
+  }, 1250);
+
+
+  document.getElementById('select-all-checkbox').addEventListener('change', (e) => {
+    const checked = e.target.checked;
+    const checkboxes = document.querySelectorAll('.log-checkbox');
+    checkboxes.forEach(checkbox => checkbox.checked = checked);
+  });
+  document.getElementById('delete-selected').addEventListener('click', () => {
+    const checkedRows = document.querySelectorAll('.log-checkbox:checked');
+    checkedRows.forEach(row => {
+      const tr = row.closest('tr');
+      tr.remove();
+    });
+    document.getElementById('select-all-checkbox').checked = false;
+  });
   </script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>feather.replace();</script>
 </body>
 </html>
