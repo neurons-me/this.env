@@ -5,5 +5,7 @@
 pub mod env;
 pub mod middleware;
 pub mod utils;
+pub mod html;
 // Expose Actix middleware with camelCase alias for convenience
 pub use middleware::actix::ActixMiddleware as actixMiddleware;
+pub use env::{Env, EnvStatus};

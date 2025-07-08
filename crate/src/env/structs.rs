@@ -2,6 +2,7 @@
 // by suiGn
 //! Contains the core data structures and types used in the `this.env` crate.
 use chrono::{DateTime, Utc};
+use crate::middleware::env_request::EnvRequestInfo;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 /// Endorser signature and approval status
@@ -115,9 +116,68 @@ impl FromSql for TrustLevel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EnvStatus {
     /// The environment has been approved by at least one endorser.
-    Approved,
+    Approved {
+        env_request: EnvRequestInfo,
+    },
     /// The environment has been explicitly blocked.
-    Blocked(String),
+    Blocked {
+        env_request: EnvRequestInfo,
+        reason: String,
+    },
     /// The environment has no endorsements and is pending approval.
-    PendingApproval(String),
+    PendingApproval {
+        env_request: EnvRequestInfo,
+        reason: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnvRequestLog {
+    pub timestamp: String,
+    pub method: String,
+    pub path: String,
+    pub ip: Option<String>,
+    pub host: String,
+    pub headers: String,
+    pub decision: String,
+    pub reason: String,
+}
+
+
+use crate::middleware::env_request::EnvRequest;
+impl From<EnvRequest> for EnvRequestLog {
+    fn from(req: EnvRequest) -> Self {
+        match req {
+            EnvRequest::Http(http) => Self {
+                timestamp: Utc::now().to_rfc3339(),
+                method: http.method,
+                path: http.path,
+                ip: http.ip,
+                host: http.host,
+                headers: serde_json::to_string(&http.headers).unwrap_or_default(),
+                decision: String::new(),
+                reason: String::new(),
+            },
+            EnvRequest::Ws(ws) => Self {
+                timestamp: Utc::now().to_rfc3339(),
+                method: "WS".into(),
+                path: "".into(),
+                ip: ws.ip,
+                host: ws.host,
+                headers: serde_json::to_string(&ws.headers).unwrap_or_default(),
+                decision: String::new(),
+                reason: String::new(),
+            },
+            EnvRequest::Cli(_) => Self {
+                timestamp: Utc::now().to_rfc3339(),
+                method: "CLI".into(),
+                path: "".into(),
+                ip: None,
+                host: "localhost".into(),
+                headers: "{}".into(),
+                decision: String::new(),
+                reason: String::new(),
+            },
+        }
+    }
 }

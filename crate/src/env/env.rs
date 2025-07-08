@@ -6,9 +6,9 @@ use std::path::Path;
 use serde::{Serialize, Deserialize};
 use rusqlite::{params, Connection, Result as SqlResult};
 use rusqlite::OptionalExtension;
-use crate::env::structs::{Endorsement, EnvType, TrustLevel, RouteInfo};
-pub use crate::env::structs::EnvStatus;
+use crate::env::structs::{Endorsement, EnvType, TrustLevel, RouteInfo, EnvStatus};
 use crate::middleware::env_request::EnvRequest;
+use crate::middleware::env_request::EnvRequestInfo;
 use crate::utils::domain_utils::{determine_parent, split_host};
 use crate::utils::id_utils::generate_id_for;
 use crate::env::migrate_schema::migrate_schema;
@@ -100,34 +100,33 @@ pub fn from_request(conn: &Connection, req: &EnvRequest) -> SqlResult<Option<Sel
     /// If no endorsements are present, it defaults to PendingApproval status.
     pub fn status(&self, conn: &Connection) -> SqlResult<EnvStatus> {
         let endorsements = Self::get_endorsements(conn, &self.domain)?;
+        let dummy_req = EnvRequest::Cli(Default::default());
         if endorsements.is_empty() {
-            return Ok(EnvStatus::PendingApproval(self.domain.clone()));
+            return Ok(EnvStatus::PendingApproval {
+                env_request: EnvRequestInfo::from(&dummy_req),
+                reason: self.domain.clone(),
+            });
         }
         let has_approval = endorsements.iter().any(|e| e.approved);
         let has_rejection = endorsements.iter().any(|e| !e.approved);
         if has_approval {
-            Ok(EnvStatus::Approved)
+            Ok(EnvStatus::Approved {
+                env_request: EnvRequestInfo::from(&dummy_req),
+            })
         } else if has_rejection {
-            Ok(EnvStatus::Blocked(self.domain.clone()))
+            Ok(EnvStatus::Blocked {
+                env_request: EnvRequestInfo::from(&dummy_req),
+                reason: self.domain.clone(),
+            })
         } else {
-            Ok(EnvStatus::PendingApproval(self.domain.clone()))
+            Ok(EnvStatus::PendingApproval {
+                env_request: EnvRequestInfo::from(&dummy_req),
+                reason: self.domain.clone(),
+            })
         }
     }
 
-/// Resolves the current environment request and returns its endorsement status.
-///
-/// This is the primary public API to determine the state of an environment from a structured request.
-/// It will handle opening the SQLite connection, perform migration if needed, and use `from_request`
-/// to find the environment configuration before evaluating its status.
-pub fn resolve(req: &EnvRequest) -> SqlResult<EnvStatus> {
-    let conn = Connection::open(Path::new(".").join(".db"))?;
-    migrate_schema(&conn)?;
-    if let Some(env) = Self::from_request(&conn, req)? {
-        env.status(&conn)
-    } else {
-        Ok(EnvStatus::Approved)
-    }
-}
+
 
     /// Sets a metadata key-value pair in the SQLite database.
     pub fn set_metadata_sql(conn: &Connection, domain: &str, key: &str, value: &str) -> SqlResult<()> {
@@ -218,4 +217,3 @@ pub fn resolve(req: &EnvRequest) -> SqlResult<EnvStatus> {
         Ok(children)
     }
 }
- 

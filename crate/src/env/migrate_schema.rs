@@ -1,4 +1,5 @@
 //this.env/crate/src/env/migrate_schema.rs by suiGn
+// this is the place to define and migrate the database schema of this.env
 use rusqlite::{Connection, Result as SqlResult};
 pub fn migrate_schema(conn: &Connection) -> SqlResult<()> {
     conn.execute(
@@ -47,6 +48,20 @@ pub fn migrate_schema(conn: &Connection) -> SqlResult<()> {
             approved INTEGER,
             timestamp INTEGER,
             PRIMARY KEY (domain, endorser)
+        )",
+        [],
+    )?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS env_request_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            method TEXT,
+            path TEXT,
+            ip TEXT,
+            host TEXT,
+            headers TEXT,
+            decision TEXT,
+            reason TEXT
         )",
         [],
     )?;

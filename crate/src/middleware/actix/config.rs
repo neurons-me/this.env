@@ -15,6 +15,8 @@ pub struct ActixMwConfig {
     /// call the inner service and merely log the EnvStatus.  
     /// This lets the application layer decide what to do.
     pub manual_mode: bool,
+    pub port: String,
+    pub instance: String,
 }
 
 impl Default for ActixMwConfig {
@@ -24,6 +26,8 @@ impl Default for ActixMwConfig {
             allow_blocked: false,
             prefer_html: false,
             manual_mode: false,
+            port: "default".to_string(),
+            instance: "default".to_string(),
         }
     }
 }

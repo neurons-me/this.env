@@ -10,6 +10,7 @@
 > By **hashing** the **environment**, **this.env** provides a mechanism to **detect and respond to changes,** ensuring that the operational **context is as intended** and has **not been altered** unexpectedly.
 
 ----------
+
 # Getting Started:
 ##### **Install `this.env`:**
 Open your terminal and run the following command to install the `this.env` package:

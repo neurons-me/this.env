@@ -1,5 +1,7 @@
-//this.env/crate/src/middleware/env_request.rs by suiGn
-// Module for standardizing inbound request translation to internal EnvRequest enums.
+//  this.env/crate/src/middleware/env_request.rs by suiGn
+//  Module for standardizing inbound request translation to internal EnvRequest enums.
+//  env_request.rs only declares the portable structs/enums that
+//  describe an incoming request in a framework-neutral way.
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 /*▗▄▄▄▖▗▖  ▗▖▗▄▄▖ ▗▄▄▄▖ ▗▄▄▖
@@ -18,6 +20,52 @@ pub enum EnvRequest {
     Ws(EnvRequestWs),
     /// Command-line or programmatic trigger
     Cli(EnvRequestCli),
+}
+
+/// A simplified, serializable form of EnvRequest for response bodies or logs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnvRequestInfo {
+    pub r#type: String,
+    pub host: String,
+    pub ip: Option<String>,
+    pub method: Option<String>,
+    pub path: Option<String>,
+    pub headers: Option<HashMap<String, String>>,
+    pub args: Option<Vec<String>>,
+}
+
+impl From<&EnvRequest> for EnvRequestInfo {
+    fn from(req: &EnvRequest) -> Self {
+        match req {
+            EnvRequest::Http(http) => EnvRequestInfo {
+                r#type: "http".into(),
+                host: http.host.clone(),
+                ip: http.ip.clone(),
+                method: Some(http.method.clone()),
+                path: Some(http.path.clone()),
+                headers: Some(http.headers.clone()),
+                args: None,
+            },
+            EnvRequest::Ws(ws) => EnvRequestInfo {
+                r#type: "ws".into(),
+                host: ws.host.clone(),
+                ip: ws.ip.clone(),
+                method: None,
+                path: None,
+                headers: Some(ws.headers.clone()),
+                args: None,
+            },
+            EnvRequest::Cli(cli) => EnvRequestInfo {
+                r#type: "cli".into(),
+                host: "localhost".into(),
+                ip: None,
+                method: Some(cli.command.clone()),
+                path: Some(cli.args.join(" ")),
+                headers: None,
+                args: Some(cli.args.clone()),
+            },
+        }
+    }
 }
 /*▗▄▄▖▗▄▄▄▖▗▄▄▖ ▗▖ ▗▖ ▗▄▄▖▗▄▄▄▖▗▖ ▗▖▗▄▄▖ ▗▄▄▄▖ ▗▄▄▖
  ▐▌     █  ▐▌ ▐▌▐▌ ▐▌▐▌     █  ▐▌ ▐▌▐▌ ▐▌▐▌   ▐▌   
@@ -73,7 +121,7 @@ pub struct EnvRequestWs {
 ▐▌   ▐▌     █  
 ▝▚▄▄▖▐▙▄▄▖▗▄█▄▖*/
 /// A CLI-triggered request, representing non-network system events or invocations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EnvRequestCli {
     /// The command invoked from CLI or automation.
     pub command: String,

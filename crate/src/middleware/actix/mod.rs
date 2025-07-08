@@ -9,5 +9,6 @@ pub mod service;
 pub mod config;
 pub mod handlers;
 pub mod utils;
+pub mod env_request_parser;
 pub use config::*;
 pub use middleware::*;

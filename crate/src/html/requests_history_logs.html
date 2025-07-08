@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>this.env Logs</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1e1e1e;
+      font-family: 'Roboto', sans-serif;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding-top: 40px;
+    }
+
+    h1 {
+      color: #eab308;
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 90%;
+      max-width: 1000px;
+      border-collapse: collapse;
+      background-color: #2d2d2d;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 14px;
+      border-bottom: 1px solid #444;
+      text-align: left;
+    }
+
+    th {
+      background-color: #222;
+      font-weight: 600;
+      color: #cfcfcf;
+    }
+
+    tr:hover {
+      background-color: #3a3a3a;
+    }
+
+    td {
+      color: #d5d5d5;
+    }
+  </style>
+</head>
+<body>
+  <h1>Logs de this.env</h1>
+  <table id="log-table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Domain</th>
+        <th>Decision</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+  <script>
+    fetch('/log-history')
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.querySelector('#log-table tbody');
+        data.forEach(log => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${log.timestamp}</td>
+            <td>${log.domain}</td>
+            <td>${log.decision}</td>
+            <td>${log.reason}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+  </script>
+</body>
+</html>
