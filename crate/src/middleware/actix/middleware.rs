@@ -56,7 +56,7 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         // Initialize SQLite and run schema migration once per Actix worker.
         let port = std::env::var("PORT").unwrap_or_else(|_| "default".to_string());
-        let instance = std::env::var("INSTANCE_NAME").unwrap_or_else(|_| "default".to_string());
+        let instance = std::env::var("monad.ai").unwrap_or_else(|_| "default".to_string());
         let db_path = format!(
             "{}/.this/env/.env_{}_{}.db",
             dirs::home_dir().unwrap().display(),
@@ -66,11 +66,17 @@ where
         let abs_path = std::fs::canonicalize(&db_path).unwrap_or_else(|_| std::path::PathBuf::from(&db_path));
         static INIT: std::sync::Once = std::sync::Once::new();
         INIT.call_once(|| {
-            log::info!("this.env middleware: using DB at {:?}", abs_path);
+            if std::env::var("DEBUG").is_ok() {
+                log::info!("this.env middleware: using DB at {:?}", abs_path);
+            }
         });
         let conn = Arc::new(Connection::open(&db_path).unwrap());
         match migrate_schema(&conn) {
-            Ok(_) => log::info!("this.env middleware: connected and migrated schema at {}", db_path),
+            Ok(_) => {
+                if std::env::var("DEBUG").is_ok() {
+                    log::info!("this.env middleware: connected and migrated schema at {}", db_path);
+                }
+            }
             Err(e) => log::error!("this.env middleware: schema migration failed: {:?}", e),
         }
 

@@ -80,22 +80,17 @@ where
                 if let Some(EnvRequest::Http(http)) = &env_request_result {
                     log::debug!("this.env request: [{}] {} {}", http.host, http.method, http.path);
                 }
-                let status = Env::resolve(env_request, &conn);
-                match status {
-                    EnvStatus::PendingApproval { env_request, reason: _ } if config.allow_pending => {
-                        EnvStatus::Approved { env_request: env_request.clone() }
-                    }
-                    EnvStatus::Blocked { env_request, reason: _ } if config.allow_blocked => {
-                        EnvStatus::Approved { env_request: env_request.clone() }
-                    }
-                    other => other,
+                // Always approve for now, bypassing pending and blocked logic
+                EnvStatus::Approved {
+                    env_request: crate::middleware::env_request::EnvRequestInfo::from(env_request),
                 }
             }
             None => {
-                // Fall‑back: create a dummy CLI request and mark as blocked
-                EnvStatus::Blocked {
-                    env_request: crate::middleware::env_request::EnvRequestInfo::from(&EnvRequest::Cli(Default::default())),
-                    reason: "internal-error".into(),
+                // If no env_request, still return Approved with a dummy request
+                EnvStatus::Approved {
+                    env_request: crate::middleware::env_request::EnvRequestInfo::from(
+                        &EnvRequest::Cli(Default::default())
+                    ),
                 }
             }
         };
@@ -116,6 +111,8 @@ where
   ▐▛▀▜▌▐▛▀▘ ▐▛▀▘ ▐▛▀▚▖▐▌ ▐▌▐▌  ▐▌▐▛▀▀▘▐▌  █
   ▐▌ ▐▌▐▌   ▐▌   ▐▌ ▐▌▝▚▄▞▘ ▝▚▞▘ ▐▙▄▄▖▐▙▄▄*/
                     EnvStatus::Approved { env_request: _ } => {
+                        // Always insert EnvStatus for handlers to read
+                        req_clone.extensions_mut().insert(decision_status.clone());
                         let res = svc_clone.call(req_clone).await?;
                         return Ok(res.map_into_left_body());
                     }
@@ -156,6 +153,8 @@ where
                     }
                 }
             }
+            // For cases without env_request, still insert Approved
+            req_clone.extensions_mut().insert(decision_status.clone());
             let res = svc_clone.call(req_clone).await?;
             Ok(res.map_into_left_body())
         })
