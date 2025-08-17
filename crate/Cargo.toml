@@ -10,9 +10,6 @@ homepage = "https://neurons.me"
 readme = "README.md"
 keywords = ["DOMS", "Data"]
 categories = ["command-line-utilities", "encoding"]
-[[bin]]
-name = "this-env-runner"
-path = "src/main.rs"
 [dependencies]
 actix-web = "4"
 actix-service = "2"
