@@ -4,8 +4,10 @@
 use std::collections::HashMap;
 use std::path::Path;
 use serde::{Serialize, Deserialize};
-use rusqlite::{params, Connection, Result as SqlResult};
+use rusqlite::{params, Connection};
 use rusqlite::OptionalExtension;
+use crate::env::error::EnvError;
+type Result<T> = std::result::Result<T, EnvError>;
 use crate::env::structs::{Endorsement, EnvType, TrustLevel, RouteInfo, EnvStatus};
 use crate::middleware::env_request::EnvRequest;
 use crate::middleware::env_request::EnvRequestInfo;
@@ -56,37 +58,43 @@ impl Env {
         }
     }
 
-    /// Initializes a SQLite database to persist this environment's data.
-    pub fn init_sqlite(&self, base_path: &Path) -> SqlResult<Connection> {
-        let db_path = base_path.join(".db");
-        let conn = Connection::open(db_path)?;
-        // Ensure schema is set up
-        migrate_schema(&conn)?;
-        Ok(conn)
-    }
+/// Initializes a SQLite database to persist this environment's data.
+  pub fn init_sqlite(&self, base_path: &Path) -> Result<Connection> {
+      {
+          use std::fs;
+          let db_path = base_path.join(".db");
+          if let Some(parent) = db_path.parent() {
+              fs::create_dir_all(parent)?; // io::Error -> EnvError via #[from]
+          }
+          let conn = Connection::open(db_path)?; // rusqlite::Error -> EnvError via #[from]
+          migrate_schema(&conn)?;                // rusqlite::Error -> EnvError via #[from]
+          Ok(conn)
+      }
+}
     /// Loads the environment from SQLite based on the domain.
     /// Returns `None` if not found.
-    fn load(conn: &Connection, domain: &str) -> SqlResult<Option<Self>> {
-        conn.query_row(
-            "SELECT id, env_type, trust, parent FROM env WHERE domain = ?1",
-            params![domain],
-            |row| {
-                Ok(Env {
-                    domain: domain.into(),
-                    id: row.get(0)?,
-                    env_type: row.get(1)?,
-                    trust: row.get(2)?,
-                    parent: row.get(3)?,
-                    routes: HashMap::new(),
-                })
-            },
-        )
-        .optional()
+    fn load(conn: &Connection, domain: &str) -> Result<Option<Self>> {
+        Ok(conn
+            .query_row(
+                "SELECT id, env_type, trust, parent FROM env WHERE domain = ?1",
+                params![domain],
+                |row| {
+                    Ok(Env {
+                        domain: domain.into(),
+                        id: row.get(0)?,
+                        env_type: row.get(1)?,
+                        trust: row.get(2)?,
+                        parent: row.get(3)?,
+                        routes: HashMap::new(),
+                    })
+                },
+            )
+            .optional()?)
     }
 
 /// Constructs an `Env` instance from a normalized `EnvRequest`.
 /// Internally uses the host to determine the root domain and fetches the environment.
-pub fn from_request(conn: &Connection, req: &EnvRequest) -> SqlResult<Option<Self>> {
+pub fn from_request(conn: &Connection, req: &EnvRequest) -> Result<Option<Self>> {
     let host = match req {
         EnvRequest::Http(r) => &r.host,
         EnvRequest::Ws(r) => &r.host,
@@ -98,7 +106,7 @@ pub fn from_request(conn: &Connection, req: &EnvRequest) -> SqlResult<Option<Sel
     /// Evaluates and returns the current endorsement status of the environment.
     /// If endorsements exist, it checks for any positive approval.
     /// If no endorsements are present, it defaults to PendingApproval status.
-    pub fn status(&self, conn: &Connection) -> SqlResult<EnvStatus> {
+    pub fn status(&self, conn: &Connection) -> Result<EnvStatus> {
         let endorsements = Self::get_endorsements(conn, &self.domain)?;
         let dummy_req = EnvRequest::Cli(Default::default());
         if endorsements.is_empty() {
@@ -125,27 +133,26 @@ pub fn from_request(conn: &Connection, req: &EnvRequest) -> SqlResult<Option<Sel
             })
         }
     }
-
-
-
     /// Sets a metadata key-value pair in the SQLite database.
-    pub fn set_metadata_sql(conn: &Connection, domain: &str, key: &str, value: &str) -> SqlResult<()> {
+    pub fn set_metadata_sql(conn: &Connection, domain: &str, key: &str, value: &str) -> Result<()> {
         conn.execute(
             "INSERT OR REPLACE INTO metadata (domain, key, value) VALUES (?1, ?2, ?3)",
             params![domain, key, value],
         )?;
         Ok(())}
     /// Retrieves a metadata value by key from the SQLite database.
-    pub fn get_metadata_sql(conn: &Connection, domain: &str, key: &str) -> SqlResult<Option<String>> {
-        conn.query_row(
-            "SELECT value FROM metadata WHERE domain = ?1 AND key = ?2",
-            params![domain, key],
-            |row| row.get(0),
-        ).optional()
+    pub fn get_metadata_sql(conn: &Connection, domain: &str, key: &str) -> Result<Option<String>> {
+        Ok(conn
+            .query_row(
+                "SELECT value FROM metadata WHERE domain = ?1 AND key = ?2",
+                params![domain, key],
+                |row| row.get(0),
+            )
+            .optional()?)
     }
 
     /// Adds or updates an endorsement in the SQLite database.
-    pub fn add_endorsement(conn: &Connection, domain: &str, endorsement: Endorsement) -> SqlResult<()> {
+    pub fn add_endorsement(conn: &Connection, domain: &str, endorsement: Endorsement) -> Result<()> {
         conn.execute(
             "INSERT OR REPLACE INTO endorsements (domain, endorser, approved, timestamp) VALUES (?1, ?2, ?3, ?4)",
             params![domain, endorsement.endorser, endorsement.approved as i32, endorsement.timestamp],
@@ -153,7 +160,7 @@ pub fn from_request(conn: &Connection, req: &EnvRequest) -> SqlResult<Option<Sel
         Ok(())
     }
     /// Retrieves all endorsements for a given domain from the SQLite database.
-    pub fn get_endorsements(conn: &Connection, domain: &str) -> SqlResult<Vec<Endorsement>> {
+    pub fn get_endorsements(conn: &Connection, domain: &str) -> Result<Vec<Endorsement>> {
         let mut stmt = conn.prepare(
             "SELECT endorser, approved, timestamp FROM endorsements WHERE domain = ?1"
         )?;
@@ -172,20 +179,24 @@ pub fn from_request(conn: &Connection, req: &EnvRequest) -> SqlResult<Option<Sel
         Ok(endorsements)
     }
     /// Checks if a specific endorser has approved the domain.
-    pub fn is_endorsed_by(conn: &Connection, domain: &str, endorser: &str) -> SqlResult<bool> {
-        conn.query_row(
-            "SELECT approved FROM endorsements WHERE domain = ?1 AND endorser = ?2",
-            params![domain, endorser],
-            |row| {
-                let approved: i32 = row.get(0)?;
-                Ok(approved != 0)
-            }
-        ).optional().map(|opt| opt.unwrap_or(false))
+    pub fn is_endorsed_by(conn: &Connection, domain: &str, endorser: &str) -> Result<bool> {
+        let val = conn
+            .query_row(
+                "SELECT approved FROM endorsements WHERE domain = ?1 AND endorser = ?2",
+                params![domain, endorser],
+                |row| {
+                    let approved: i32 = row.get(0)?;
+                    Ok(approved != 0)
+                },
+            )
+            .optional()?
+            .unwrap_or(false);
+        Ok(val)
     }
 
     /// Retrieves the parent environment of this domain, if defined.
     /// Returns `None` if there is no parent or the parent is not found in the database.
-    pub fn get_parent(&self, conn: &Connection) -> SqlResult<Option<Env>> {
+    pub fn get_parent(&self, conn: &Connection) -> Result<Option<Env>> {
         if let Some(ref parent_domain) = self.parent {
             Env::load(conn, parent_domain)
         } else {
@@ -195,7 +206,7 @@ pub fn from_request(conn: &Connection, req: &EnvRequest) -> SqlResult<Option<Sel
 
     /// Retrieves all child environments that reference this environment as their parent.
     /// Returns an empty list if there are no children.
-    pub fn get_children(&self, conn: &Connection) -> SqlResult<Vec<Env>> {
+    pub fn get_children(&self, conn: &Connection) -> Result<Vec<Env>> {
         let mut stmt = conn.prepare(
             "SELECT domain, id, env_type, trust, parent FROM env WHERE parent = ?1"
         )?;

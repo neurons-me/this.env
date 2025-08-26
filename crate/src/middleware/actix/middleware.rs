@@ -14,6 +14,8 @@ use super::service::ActixMiddlewareService;
 use rusqlite::Connection;
 use crate::env::migrate_schema::migrate_schema;
 use dirs_next as dirs;
+use std::path::Path;
+use std::fs;
 /// The `ActixMiddleware` struct is the entry point for Actix integration with `this.env`.
 /// It wraps Actix services and prepares the `Transform`.
 #[derive(Clone)]
@@ -64,14 +66,20 @@ where
             instance
         );
         let abs_path = std::fs::canonicalize(&db_path).unwrap_or_else(|_| std::path::PathBuf::from(&db_path));
+        // Ensure parent directory exists so SQLite can create the file
+        if let Some(parent) = Path::new(&db_path).parent() {
+            if let Err(e) = fs::create_dir_all(parent) {
+                log::error!("this.env middleware: failed to create DB dir {:?}: {}", parent, e);
+            }
+        }
         static INIT: std::sync::Once = std::sync::Once::new();
         INIT.call_once(|| {
             if std::env::var("DEBUG").is_ok() {
                 log::info!("this.env middleware: using DB at {:?}", abs_path);
             }
         });
-        let conn = Arc::new(Connection::open(&db_path).unwrap());
-        match migrate_schema(&conn) {
+        let conn = Arc::new(Connection::open(&db_path).expect("this.env middleware: failed to open SQLite DB (after ensuring dir exists)"));
+        match migrate_schema(&*conn) {
             Ok(_) => {
                 if std::env::var("DEBUG").is_ok() {
                     log::info!("this.env middleware: connected and migrated schema at {}", db_path);
