@@ -14,7 +14,7 @@ Tiene:
 
   - Http
   - Ws
-  - Cli
+  - CLI
 
 - Se normaliza y se extrae el host (ej. dev.neurons.me), que luego se parte (split_host) en:
 

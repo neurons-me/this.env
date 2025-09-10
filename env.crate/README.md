@@ -2,26 +2,13 @@
 Light‑weight **environment recognition & trust middleware** for Rust.
 **Goal:** Let your application decide and learn *where* it is running (localhost, extensions, remote web, CLI, …) and *how much it should trust* that origin – before you execute business‑logic.
 
----
-
-## 🛠️ Main Rust API
-| Call | What it gives you |
-|------|-------------------|
-| `Env::resolve(&EnvRequest)` | Returns `EnvStatus` (`Approved`, `PendingApproval`, `Blocked`). |
-| `Env::status(&self, db)`    | Re‑evaluate status for an existing `Env`. |
-|  |  |
-|  |  |
-|  |  |
-
-All data lives in a single `.db` file next to your executable. No server, no migrations.
-
 ------
 
 # 🧠 MIDDLEWARE
 
 A smart middleware system that inspects incoming HTTP requests and evaluates their environment (origin, IP, headers, cookies, etc.) to determine whether the request should be Approved, Blocked, or Pending Approval. It is ideal for building decentralized permission systems and real-time trust evaluation.
 
-## 🚀 Quick start (Actix Web)
+##### 🚀 Quick start (Actix Web)
 
 ```rust
 use this_env::actixMiddleware; // import
@@ -35,7 +22,7 @@ App::new()
 
 We pass the **port** to the ActixMiddleware configuration so that this.env can **differentiate its database and runtime context per running instance/port**.
 
-### Custom rules
+##### Custom rules
 
 ```rust
 use this_env::{ThisEnvMiddleware, ThisEnvMiddlewareConfig};
